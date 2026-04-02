@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Link Tester</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --border: #2a2a2a;
+      --primary: #00e5a0;
+      --primary-dim: rgba(0, 229, 160, 0.12);
+      --text: #f0f0f0;
+      --text-muted: #666;
+      --text-dim: #999;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Noto Sans KR', sans-serif;
+      --error: #ff4f4f;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--primary);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .fields {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+    }
+
+    input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .preview-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 44px;
+    }
+
+    .preview-url {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--primary);
+      word-break: break-all;
+      flex: 1;
+    }
+
+    .preview-url.empty {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .copy-btn.copied {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .launch-btn {
+      width: 100%;
+      background: var(--primary);
+      border: none;
+      border-radius: 10px;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: #000;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .launch-btn:hover {
+      opacity: 0.88;
+    }
+
+    .launch-btn:active {
+      transform: scale(0.98);
+    }
+
+    .launch-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--primary);
+      color: #000;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 18px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: all 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="header">
+      <span class="badge">🔗 Deep Link Tester</span>
+      <h1>딥링크 테스터</h1>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label>Scheme</label>
+        <input id="scheme" type="text" placeholder="myapp" />
+      </div>
+      <div class="field">
+        <label>Host</label>
+        <input id="host" type="text" placeholder="example" />
+      </div>
+      <div class="field">
+        <label>Path <span style="color: var(--text-muted); font-style: italic; text-transform: none; letter-spacing: 0;">(선택)</span></label>
+        <input id="path" type="text" placeholder="home" />
+      </div>
+    </div>
+
+    <div>
+      <div style="margin-bottom: 6px;">
+        <label>생성된 URL</label>
+      </div>
+      <div class="preview-box">
+        <span class="preview-url empty" id="preview">입력하면 URL이 생성됩니다</span>
+        <button class="copy-btn" id="copyBtn" onclick="copyUrl()">복사</button>
+      </div>
+    </div>
+
+    <button class="launch-btn" id="launchBtn" onclick="launch()" disabled>
+      앱 실행
+    </button>
+
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const schemeEl = document.getElementById('scheme');
+    const hostEl = document.getElementById('host');
+    const pathEl = document.getElementById('path');
+    const previewEl = document.getElementById('preview');
+    const launchBtn = document.getElementById('launchBtn');
+
+    function buildUrl() {
+      const scheme = schemeEl.value.trim();
+      const host = hostEl.value.trim();
+      const path = pathEl.value.trim();
+      if (!scheme) return '';
+      let url = scheme + '://';
+      if (host) url += host;
+      if (path) url += '/' + path.replace(/^\/+/, '');
+      return url;
+    }
+
+    function update() {
+      const url = buildUrl();
+      if (url) {
+        previewEl.textContent = url;
+        previewEl.classList.remove('empty');
+        launchBtn.disabled = false;
+      } else {
+        previewEl.textContent = '입력하면 URL이 생성됩니다';
+        previewEl.classList.add('empty');
+        launchBtn.disabled = true;
+      }
+    }
+
+    function launch() {
+      const url = buildUrl();
+      if (!url) return;
+      window.location.href = url;
+      showToast('앱 실행 시도: ' + url);
+    }
+
+    function copyUrl() {
+      const url = buildUrl();
+      if (!url) return;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = '복사됨';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '복사';
+          btn.classList.remove('copied');
+        }, 1500);
+      });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    [schemeEl, hostEl, pathEl].forEach(el => el.addEventListener('input', update));
+    update();
+  </script>
+</body>
+</html>
